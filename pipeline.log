@@ -1,0 +1,17 @@
+INFO:root:Script started
+INFO:root:Connected to MongoDB
+INFO:root:Found 1305 high temperature records
+INFO:root:JSON exported successfully
+2026-05-21 12:50:57,575 - INFO - ========== LoRaWAN Pipeline Started ==========
+2026-05-21 12:50:57,577 - INFO - Connected to MongoDB successfully
+2026-05-21 12:50:57,587 - INFO - CSV loaded successfully with 5109 records
+2026-05-21 12:50:57,589 - INFO - Data validation completed
+2026-05-21 12:50:57,730 - INFO - Indexes created successfully
+2026-05-21 12:50:57,823 - INFO - 5109 records inserted into MongoDB
+2026-05-21 12:50:57,857 - INFO - Top 10 devices query executed successfully
+2026-05-21 12:50:57,874 - INFO - RSSI and SNR analysis completed
+2026-05-21 12:50:57,931 - INFO - Gateway environmental analysis completed
+2026-05-21 12:50:57,952 - INFO - Duplicate device detection completed
+2026-05-21 12:50:57,969 - INFO - Exported 2610 high temperature records
+2026-05-21 12:50:57,972 - INFO - MongoDB connection closed
+2026-05-21 12:50:57,972 - INFO - ========== Pipeline Finished Successfully ==========
