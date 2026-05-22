@@ -1,259 +1,104 @@
-import pandas as pd
-import json
+import os
 import logging
-from pymongo import MongoClient
-from pymongo.errors import BulkWriteError
-from datetime import datetime
+import pandas as pd
 
-# =========================================================
-# LOGGING CONFIGURATION
-# =========================================================
+from analysis.top_10_devices import get_top_10_devices
+from analysis.avg_rssi_snr import get_avg_rssi_snr
+from analysis.gateway_environment import get_gateway_environment
+from analysis.duplicate_devices import get_duplicate_devices
+from analysis.high_temperature import export_high_temperature_records
+
+from database.mongodb_connection import get_mongodb_collection
+
+
+os.makedirs("output", exist_ok=True)
+
+
 logging.basicConfig(
-    filename="pipeline.log",
+    filename="output/pipeline.log",
     level=logging.INFO,
     format="%(asctime)s - %(levelname)s - %(message)s"
 )
 
-logging.info("========== LoRaWAN Pipeline Started ==========")
+logger = logging.getLogger(__name__)
 
-# =========================================================
-# MONGODB CONNECTION
-# =========================================================
-try:
-    client = MongoClient("mongodb://localhost:27017/")
 
-    db = client["lorawan_db"]
+def import_csv_to_mongodb(collection):
+    df = pd.read_csv("lorawan_uplink_devices.csv")
 
-    collection = db["uplinks"]
+    logger.info(f"CSV loaded successfully with {len(df)} records")
 
-    logging.info("Connected to MongoDB successfully")
+    collection.delete_many({})
 
-except Exception as e:
-    logging.error(f"MongoDB connection failed: {e}")
-    raise
-
-# =========================================================
-# CSV INGESTION
-# =========================================================
-CSV_FILE = "lorawan_uplink_devices.csv"
-
-try:
-    df = pd.read_csv(CSV_FILE)
-
-    logging.info(f"CSV loaded successfully with {len(df)} records")
-
-except Exception as e:
-    logging.error(f"Failed to read CSV file: {e}")
-    raise
-
-# =========================================================
-# DATA VALIDATION
-# =========================================================
-required_columns = [
-    "device_id",
-    "timestamp",
-    "temperature",
-    "humidity",
-    "rssi",
-    "snr",
-    "latitude",
-    "longitude",
-    "gateway_id"
-]
-
-missing_columns = [
-    col for col in required_columns if col not in df.columns
-]
-
-if missing_columns:
-    logging.error(f"Missing columns: {missing_columns}")
-    raise Exception(f"Missing columns: {missing_columns}")
-
-# Remove rows with missing device_id
-df = df.dropna(subset=["device_id"])
-
-logging.info("Data validation completed")
-
-# =========================================================
-# CREATE INDEXES
-# =========================================================
-try:
-    collection.create_index("device_id")
-    collection.create_index("gateway_id")
-    collection.create_index("temperature")
-
-    logging.info("Indexes created successfully")
-
-except Exception as e:
-    logging.warning(f"Index creation warning: {e}")
-
-# =========================================================
-# INSERT DATA INTO MONGODB
-# =========================================================
-try:
     records = df.to_dict(orient="records")
 
     if records:
         collection.insert_many(records)
 
-        logging.info(f"{len(records)} records inserted into MongoDB")
+    logger.info(f"{len(records)} records inserted into MongoDB")
 
-except BulkWriteError as bwe:
-    logging.error(f"Bulk write error: {bwe.details}")
 
-except Exception as e:
-    logging.error(f"Data insertion failed: {e}")
+def generate_output_report():
+    with open("output/output_report.md", "w") as report:
+        report.write("# LoRaWAN Pipeline Output Report\n\n")
 
-# =========================================================
-# QUERY 1:
-# TOP 10 DEVICES WITH HIGHEST UPLINKS
-# =========================================================
-print("\n=================================================")
-print("TOP 10 DEVICES WITH HIGHEST UPLINKS")
-print("=================================================\n")
+        report.write("## Standard Output\n\n")
+        report.write("```text\n")
+        report.write("Pipeline executed successfully.\n")
+        report.write("CSV data imported into MongoDB.\n")
+        report.write("MongoDB collection used: uplinks\n")
+        report.write("All analysis functions executed successfully.\n")
+        report.write("Separate output files generated inside output folder.\n")
+        report.write("```\n\n")
 
-pipeline_top_devices = [
-    {
-        "$group": {
-            "_id": "$device_id",
-            "uplink_count": {"$sum": 1}
-        }
-    },
-    {
-        "$sort": {"uplink_count": -1}
-    },
-    {
-        "$limit": 10
-    }
-]
+        report.write("## Generated Output Files\n\n")
+        report.write("```text\n")
+        report.write("output/top_10_devices.json\n")
+        report.write("output/avg_rssi_snr.json\n")
+        report.write("output/gateway_environment.json\n")
+        report.write("output/duplicate_devices.json\n")
+        report.write("output/high_temperature.json\n")
+        report.write("output/pipeline.log\n")
+        report.write("```\n\n")
 
-top_devices = list(collection.aggregate(pipeline_top_devices))
+        report.write("## Logs\n\n")
+        report.write("```text\n")
 
-for device in top_devices:
-    print(device)
+        try:
+            with open("output/pipeline.log", "r") as log_file:
+                report.write(log_file.read())
+        except FileNotFoundError:
+            report.write("No logs found.\n")
 
-logging.info("Top 10 devices query executed successfully")
+        report.write("```\n")
 
-# =========================================================
-# QUERY 2:
-# AVERAGE RSSI AND SNR PER DEVICE
-# =========================================================
-print("\n=================================================")
-print("AVERAGE RSSI AND SNR PER DEVICE")
-print("=================================================\n")
 
-pipeline_signal = [
-    {
-        "$group": {
-            "_id": "$device_id",
-            "avg_rssi": {"$avg": "$rssi"},
-            "avg_snr": {"$avg": "$snr"}
-        }
-    },
-    {
-        "$sort": {"avg_rssi": 1}
-    }
-]
+def main():
+    try:
+        logger.info("========== LoRaWAN Pipeline Started ==========")
 
-signal_stats = list(collection.aggregate(pipeline_signal))
+        collection = get_mongodb_collection(logger)
 
-for stat in signal_stats[:10]:
-    print(stat)
+        import_csv_to_mongodb(collection)
 
-logging.info("RSSI and SNR analysis completed")
+        get_top_10_devices(collection, logger)
+        get_avg_rssi_snr(collection, logger)
+        get_gateway_environment(collection, logger)
+        get_duplicate_devices(collection, logger)
+        export_high_temperature_records(collection, logger)
 
-# =========================================================
-# QUERY 3:
-# AVERAGE TEMPERATURE AND HUMIDITY PER GATEWAY
-# =========================================================
-print("\n=================================================")
-print("AVERAGE TEMPERATURE AND HUMIDITY PER GATEWAY")
-print("=================================================\n")
+        generate_output_report()
 
-pipeline_gateway = [
-    {
-        "$group": {
-            "_id": "$gateway_id",
-            "avg_temperature": {"$avg": "$temperature"},
-            "avg_humidity": {"$avg": "$humidity"}
-        }
-    }
-]
+        logger.info("========== LoRaWAN Pipeline Completed ==========")
 
-gateway_stats = list(collection.aggregate(pipeline_gateway))
+        print("Pipeline executed successfully.")
+        print("Check the output folder for logs and reports.")
 
-for gateway in gateway_stats:
-    print(gateway)
+    except Exception as error:
+        logger.error(f"Pipeline failed: {error}")
+        print(f"Pipeline failed: {error}")
+        raise
 
-logging.info("Gateway environmental analysis completed")
 
-# =========================================================
-# QUERY 4:
-# FIND DUPLICATE DEVICE IDs
-# =========================================================
-print("\n=================================================")
-print("DUPLICATE DEVICE IDs")
-print("=================================================\n")
-
-pipeline_duplicates = [
-    {
-        "$group": {
-            "_id": "$device_id",
-            "count": {"$sum": 1}
-        }
-    },
-    {
-        "$match": {
-            "count": {"$gt": 1}
-        }
-    }
-]
-
-duplicates = list(collection.aggregate(pipeline_duplicates))
-
-for duplicate in duplicates:
-    print(duplicate)
-
-logging.info("Duplicate device detection completed")
-
-# =========================================================
-# QUERY 5:
-# EXPORT HIGH TEMPERATURE RECORDS TO JSON
-# =========================================================
-print("\n=================================================")
-print("EXPORTING HIGH TEMPERATURE RECORDS")
-print("=================================================\n")
-
-high_temp_records = collection.find(
-    {
-        "temperature": {"$gt": 35}
-    },
-    {
-        "_id": 0,
-        "device_id": 1,
-        "latitude": 1,
-        "longitude": 1,
-        "temperature": 1
-    }
-)
-
-high_temp_data = list(high_temp_records)
-
-with open("high_temperature.json", "w") as json_file:
-    json.dump(high_temp_data, json_file, indent=4)
-
-print(f"Exported {len(high_temp_data)} records to high_temperature.json")
-
-logging.info(
-    f"Exported {len(high_temp_data)} high temperature records"
-)
-
-# =========================================================
-# CLOSE MONGODB CONNECTION
-# =========================================================
-client.close()
-
-logging.info("MongoDB connection closed")
-logging.info("========== Pipeline Finished Successfully ==========")
-
-print("\nPipeline execution completed successfully!\n")
+if __name__ == "__main__":
+    main()

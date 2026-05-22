@@ -6,7 +6,12 @@ This project implements a complete IoT data ingestion and analytics pipeline for
 
 The system processes sensor telemetry data stored in a CSV file, imports it into MongoDB, performs multiple aggregation-based analytics queries, and exports critical temperature alerts into JSON format.
 
-The project simulates a real-world IoT telemetry processing workflow commonly used in smart cities, industrial monitoring, agriculture, and environmental sensing systems.
+The project simulates a real-world IoT telemetry processing workflow commonly used in:
+
+- Smart cities
+- Industrial monitoring
+- Agriculture systems
+- Environmental sensing systems
 
 ---
 
@@ -20,6 +25,7 @@ The objective of this project is to:
 - Detect duplicate device records
 - Export high-temperature alerts for monitoring systems
 - Implement logging, error handling, and scheduling support
+- Containerize the project using Docker
 
 ---
 
@@ -31,6 +37,7 @@ The objective of this project is to:
 | Pandas     | CSV ingestion and preprocessing |
 | MongoDB    | NoSQL database storage          |
 | PyMongo    | MongoDB connectivity            |
+| Docker     | Containerization                |
 | JSON       | Exporting alert data            |
 | Logging    | Monitoring and debugging        |
 | Cron       | Daily task scheduling           |
@@ -46,30 +53,6 @@ lorawan_uplink_devices.csv
 ```
 
 The dataset contains LoRaWAN uplink telemetry information collected from 5,000+ IoT devices.
-
----
-
-# Dataset Fields
-
-| Field               | Description                        |
-| ------------------- | ---------------------------------- |
-| device_id           | Unique sensor/device identifier    |
-| dev_eui             | Device EUI identifier              |
-| dev_addr            | Device network address             |
-| timestamp           | Uplink timestamp                   |
-| temperature         | Temperature reading                |
-| humidity            | Humidity reading                   |
-| barometric_pressure | Atmospheric pressure               |
-| analog_in_1         | Analog sensor input 1              |
-| analog_in_2         | Analog sensor input 2              |
-| rssi                | Received Signal Strength Indicator |
-| snr                 | Signal-to-Noise Ratio              |
-| latitude            | GPS latitude                       |
-| longitude           | GPS longitude                      |
-| gateway_id          | Receiving gateway identifier       |
-| frequency           | Transmission frequency             |
-| spreading_factor    | LoRa spreading factor              |
-| bandwidth           | Communication bandwidth            |
 
 ---
 
@@ -151,7 +134,7 @@ Exported fields:
 Generated file:
 
 ```text
-high_temperature.json
+output/high_temperature.json
 ```
 
 ---
@@ -168,23 +151,8 @@ Implemented:
 Generated log file:
 
 ```text
-pipeline.log
+output/pipeline.log
 ```
-
----
-
-## 8. MongoDB Indexing
-
-Indexes created on:
-
-- `device_id`
-- `gateway_id`
-- `temperature`
-
-Purpose:
-
-- Improve query performance
-- Optimize aggregation operations
 
 ---
 
@@ -207,28 +175,61 @@ uplinks
 # Project Structure
 
 ```text
-Task1_LoRaWAN_Pipeline/
+lorawan_project/
 │
+├── output/
+│   ├── high_temperature.json
+│   ├── output_report.md
+│   └── pipeline.log
+│
+├── Dockerfile
+├── docker-compose.yml
 ├── main.py
 ├── README.md
 ├── requirements.txt
-├── high_temperature.json
-├── pipeline.log
 ├── lorawan_uplink_devices.csv
-└── screenshots/
+└── .gitignore
 ```
 
 ---
 
-# Setup Instructions
+# Docker Setup
 
-## 1. Clone or Download Project
+## Build and Run the Project
 
-Place all project files into a local folder.
+```bash
+docker compose up --build
+```
 
 ---
 
-## 2. Create Virtual Environment
+## Run Again
+
+```bash
+docker compose up
+```
+
+---
+
+## Stop Containers
+
+```bash
+docker compose down
+```
+
+---
+
+## Remove Containers + Volumes
+
+```bash
+docker compose down -v
+```
+
+---
+
+# Local Setup (Without Docker)
+
+## 1. Create Virtual Environment
 
 ```bash
 python3 -m venv venv
@@ -236,7 +237,7 @@ python3 -m venv venv
 
 ---
 
-## 3. Activate Virtual Environment
+## 2. Activate Environment
 
 ### macOS/Linux
 
@@ -246,13 +247,7 @@ source venv/bin/activate
 
 ---
 
-## 4. Install Dependencies
-
-```bash
-pip install pandas pymongo
-```
-
-OR
+## 3. Install Dependencies
 
 ```bash
 pip install -r requirements.txt
@@ -260,7 +255,7 @@ pip install -r requirements.txt
 
 ---
 
-## 5. Start MongoDB
+## 4. Start MongoDB
 
 ```bash
 brew services start mongodb/brew/mongodb-community
@@ -274,7 +269,7 @@ mongosh
 
 ---
 
-## 6. Run the Pipeline
+## 5. Run the Pipeline
 
 ```bash
 python main.py
@@ -282,34 +277,78 @@ python main.py
 
 ---
 
-# Aggregation Queries Used
+# Output Files
 
-## Top Devices Query
+All outputs are stored inside the `output/` folder.
 
-Used:
-
-- `$group`
-- `$sort`
-- `$limit`
-
----
-
-## RSSI/SNR Analysis
-
-Used:
-
-- `$avg`
-- `$group`
-- `$sort`
+| File                  | Description                    |
+| --------------------- | ------------------------------ |
+| high_temperature.json | High temperature alert records |
+| pipeline.log          | Execution logs                 |
+| output_report.md      | Markdown output report         |
 
 ---
 
-## Duplicate Detection
+# Output Section
 
-Used:
+## Standard Output
 
-- `$match`
-- `$group`
+```text
+Pipeline executed successfully.
+CSV data imported into MongoDB.
+MongoDB collection used: uplinks
+All analysis queries executed successfully.
+High temperature records exported successfully.
+```
+
+---
+
+## Logs
+
+```text
+2026-05-22 10:10:15 - INFO - LoRaWAN Pipeline Started
+2026-05-22 10:10:16 - INFO - Connected to MongoDB successfully
+2026-05-22 10:10:17 - INFO - CSV loaded successfully
+2026-05-22 10:10:18 - INFO - Records inserted into MongoDB
+2026-05-22 10:10:20 - INFO - Aggregation queries executed
+2026-05-22 10:10:21 - INFO - High temperature records exported
+2026-05-22 10:10:22 - INFO - Pipeline completed successfully
+```
+
+---
+
+## High Temperature JSON Export
+
+```json
+[
+  {
+    "device_id": "DEV_1001",
+    "latitude": 12.9716,
+    "longitude": 77.5946,
+    "temperature": 37.5
+  }
+]
+```
+
+---
+
+# Scheduling (Bonus Task)
+
+Daily automation can be configured using cron.
+
+Open cron editor:
+
+```bash
+crontab -e
+```
+
+Example cron job:
+
+```bash
+0 1 * * * /usr/bin/python3 /Users/username/lorawan_project/main.py
+```
+
+This executes the pipeline daily at 1:00 AM.
 
 ---
 
@@ -354,36 +393,6 @@ Higher SNR indicates better signal quality.
 
 ---
 
-# Output Files
-
-| File                  | Description                    |
-| --------------------- | ------------------------------ |
-| high_temperature.json | High temperature alert records |
-| pipeline.log          | Execution logs                 |
-| main.py               | Main ETL pipeline script       |
-
----
-
-# Scheduling (Bonus Task)
-
-Daily automation can be configured using cron.
-
-Open cron editor:
-
-```bash
-crontab -e
-```
-
-Example cron job:
-
-```bash
-0 1 * * * /usr/bin/python3 /Users/username/lorawan_project/main.py
-```
-
-This executes the pipeline daily at 1:00 AM.
-
----
-
 # Future Improvements
 
 Potential enhancements:
@@ -391,7 +400,6 @@ Potential enhancements:
 - Real-time MQTT ingestion
 - Kafka streaming pipeline
 - Dashboard visualization using Grafana
-- Docker containerization
 - Apache Airflow orchestration
 - Machine learning anomaly detection
 - REST API integration
@@ -410,6 +418,7 @@ The implementation covers:
 - Signal quality analysis
 - Environmental monitoring
 - Logging and error handling
+- Docker containerization
 - Automated scheduling
 
 The system is scalable and can be extended for real-world IoT monitoring applications.

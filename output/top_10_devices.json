@@ -1,0 +1,42 @@
+[
+    {
+        "_id": "device-0206",
+        "uplink_count": 4
+    },
+    {
+        "_id": "device-4525",
+        "uplink_count": 4
+    },
+    {
+        "_id": "device-3016",
+        "uplink_count": 4
+    },
+    {
+        "_id": "device-2036",
+        "uplink_count": 4
+    },
+    {
+        "_id": "device-1099",
+        "uplink_count": 4
+    },
+    {
+        "_id": "device-0829",
+        "uplink_count": 4
+    },
+    {
+        "_id": "device-1321",
+        "uplink_count": 4
+    },
+    {
+        "_id": "device-1920",
+        "uplink_count": 4
+    },
+    {
+        "_id": "device-2879",
+        "uplink_count": 4
+    },
+    {
+        "_id": "device-0684",
+        "uplink_count": 4
+    }
+]
